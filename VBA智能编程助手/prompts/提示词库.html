@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>提示词库 · 五文件模板</title>
+<meta name="description" content="五文件可复用提示词库：内容全部在 提示词库.data.js（JSON 风格+文本块免转义），引擎零触碰，支持页面内表单生成代码与草稿箱">
+<!--
+  ═══════════════════════════════════════════════════════════════
+  提示词库 · 五文件模板
+  ───────────────────────────────────────────────────────────────
+  文件分工：
+    提示词库.html        本文件，入口骨架 —— 不用碰
+    提示词库.style.css   全部样式        —— 不用碰
+    提示词库.store.js    存储层          —— 不用碰
+    提示词库.engine.js   渲染+交互       —— 不用碰
+    提示词库.data.js     内容唯一事实源   —— 只改这个
+  使用方式：双击本文件离线打开（零外部依赖）。
+    · 新增/编辑/删除 → 页面内操作（自动保存到浏览器本地，刷新不丢）
+    · 落盘 → 左下「存为文件」：支持直写就覆盖 提示词库.data.js，
+      浏览器限制（file://）则下载新文件替换旧文件
+    · 文件改了页面没变 → 点「重置」从 提示词库.data.js 重新加载
+    · 迁移/保险 → 弹窗底部「备份 JSON / 恢复备份」
+  快捷键：/ 搜索 · ↑↓ 切换 · #编号 深链 · Esc 关弹窗
+  分发提醒：五个文件必须放在同一文件夹里一起拷贝。
+  ═══════════════════════════════════════════════════════════════
+-->
+<link rel="stylesheet" href="提示词库.style.css">
+</head>
+<body>
+<div id="dataWarn" class="data-warn hidden"></div>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none"><circle cx="12" cy="12" r="10.2" stroke="currentColor" stroke-width="1.6"/><path d="M9 8.4v7.2l6.4-3.6z" fill="currentColor"/></svg>
+      </div>
+      <div class="brand-text"><strong id="brandName"></strong><span id="brandSub"></span></div>
+    </div>
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="search" placeholder="搜索提示词…" autocomplete="off">
+    </div>
+    <nav id="tabs" class="tabs" aria-label="视图切换"></nav>
+    <div class="side-tools">
+      <button id="addBtn" class="tool-btn add" title="新增提示词（直接入库到本地存储）">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span>新增</span><span id="draftBadge" class="draft-badge hidden"></span>
+      </button>
+      <button id="themeToggle" class="tool-btn" title="切换深浅主题">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span id="themeLabel">浅色</span>
+      </button>
+    </div>
+    <div class="side-tools">
+      <button id="saveFileBtn" class="tool-btn" title="把当前全部数据写回 提示词库.data.js（浏览器不允许直写时自动下载新文件替换）">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>存为文件</span>
+      </button>
+      <button id="resetBtn" class="tool-btn" title="丢弃页面改动，恢复为 提示词库.data.js 文件内容">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M4 10a8 8 0 111.5 6M4 10V4m0 6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>重置</span>
+      </button>
+    </div>
+    <div class="kbd-hint">↑↓ 切换 · / 搜索 · #编号 深链</div>
+  </aside>
+
+  <main class="main">
+    <section class="view" id="view-overview">
+      <header class="hero" id="hero"></header>
+      <div id="ovBody"></div>
+      <footer class="page-footer" id="pageFooter"></footer>
+    </section>
+    <section class="view view-lib hidden" id="view-lib">
+      <div class="lib-list" id="libList" role="listbox" aria-label="提示词列表"></div>
+      <div class="lib-detail" id="libDetail"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ＋新增 弹窗（表单 → 生成 data.js 代码块 → 复制回粘；草稿存 localStorage） -->
+<div id="modalVeil" class="modal-veil hidden">
+  <div class="modal" role="dialog" aria-label="新增提示词">
+    <div class="m-head"><h3 id="mTitle">＋ 新增提示词</h3><button id="mClose" class="m-close" title="关闭 (Esc)">✕</button></div>
+    <div class="m-cols">
+      <div class="m-form">
+        <div class="f-row"><label>编号 code</label><input id="fCode" placeholder="如 SYS-03（唯一）"></div>
+        <div class="f-row"><label>分类 cat</label><input id="fCat" list="catList" placeholder="写新名字=自动建新列"><datalist id="catList"></datalist></div>
+        <div class="f-row"><label>标题 title</label><input id="fTitle"></div>
+        <div class="f-row"><label>标签 tags</label><input id="fTags" placeholder="逗号分隔，如：示例,底座"></div>
+        <div class="f-row"><label>用法 scene</label><input id="fScene" placeholder="什么时候用它"></div>
+        <div class="f-row tall"><label>全文 prompt</label><textarea id="fPrompt" placeholder="直接粘贴多行全文，无需任何转义…"></textarea></div>
+        <div class="m-btns">
+          <button id="mSave" class="btn primary">保存到库</button>
+          <button id="mDraft" class="btn">存草稿</button>
+          <button id="mClear" class="btn">清空</button>
+        </div>
+      </div>
+      <div class="m-gen">
+        <p class="m-help">右侧代码块为写入 <b>提示词库.data.js</b> 的等价格式（${ 与反引号自动转义）。<b>日常无需手动编辑文件</b>：点「保存到库」即入库本地存储；换设备时用底部「备份 JSON」。</p>
+        <pre id="genPre" class="gen-pre">填表后这里实时生成…</pre>
+        <button id="mCopy" class="copy-btn big"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 15V6a2 2 0 012-2h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>复制这段代码</span></button>
+        <div class="m-drafts"><h4>草稿箱 <span class="toc-count" id="draftCount"></span></h4><div id="draftList"></div></div>
+        <div class="m-admin">
+          <h4>数据管理</h4>
+          <div class="m-btns">
+            <button id="mBackup" class="btn">备份 JSON</button>
+            <button id="mRestore" class="btn">恢复备份</button>
+            <input type="file" id="mRestoreFile" accept=".json,application/json" class="hidden">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="提示词库.data.js"></script>
+<script src="提示词库.store.js"></script>
+<script src="提示词库.engine.js"></script>
+</body>
+</html>
