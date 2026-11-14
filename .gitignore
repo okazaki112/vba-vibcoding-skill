@@ -1,0 +1,7 @@
+__pycache__/
+_smoke/
+_smoke2/
+*.pyc
+*.bak
+~$*
+node_modules/

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VBA智能编程助手 · 需求一句话，成品一个簿</title>
+<meta name="description" content="一个 Agent Skill：你说需求，它生成 VBA、注入 Excel、跑给你看。默认交付带测试数据的 .xlsm 成品。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F5; --paper2:#F3F1EA; --ink:#1B1B16; --sub:#565648; --faint:#8B8B7C;
+    --line:#E3E0D6; --green:#217346; --green-dk:#17452B; --mark:rgba(33,115,70,.13);
+    --dark:#14201A; --darktx:#C9D8CD; --darksub:#7E948A;
+    --serif:"Noto Serif SC","Source Han Serif SC","SimSun",Georgia,serif;
+    --sans:Inter,"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    --mono:"Cascadia Code",Consolas,"JetBrains Mono","Courier New",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.5;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>")}
+  ::selection{background:var(--mark)}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 28px}
+  .mono{font-family:var(--mono)}
+
+  /* ── 顶栏 ─────────────────────────── */
+  .top{border-bottom:1px solid var(--line);background:rgba(250,249,245,.9);backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:50}
+  .topin{max-width:1060px;margin:0 auto;padding:15px 28px;display:flex;align-items:baseline;gap:8px}
+  .wordmark{font-family:var(--serif);font-weight:900;font-size:17px;letter-spacing:1px}
+  .wordmark em{font-style:normal;color:var(--green)}
+  .topin .tag{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:1px}
+  .topin nav{margin-left:auto;display:flex;gap:24px;font-size:13.5px;color:var(--sub)}
+  .topin nav a{padding:2px 0;border-bottom:2px solid transparent;transition:border-color .18s}
+  .topin nav a:hover{color:var(--ink);border-bottom-color:var(--green)}
+  @media(max-width:720px){.topin nav{display:none}}
+
+  /* ── Hero：不对称，左文右证物 ─────── */
+  .hero{padding:84px 0 72px}
+  .hero .kicker{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--green);margin-bottom:26px}
+  .hero .kicker::before{content:"—— "}
+  h1{font-family:var(--serif);font-weight:900;font-size:clamp(38px,6.4vw,64px);line-height:1.28;letter-spacing:.5px;max-width:560px}
+  h1 .mk{background:linear-gradient(transparent 58%,var(--mark) 58%);padding:0 3px}
+  .hero .lead{margin-top:26px;max-width:480px;color:var(--sub);font-size:16.5px}
+  .hero .lead b{color:var(--ink)}
+  .cta{margin-top:34px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:15px;font-weight:600;padding:13px 26px;border-radius:2px;cursor:pointer;
+    transition:background .18s,color .18s,transform .18s cubic-bezier(.16,1,.3,1)}
+  .btn.pri{background:var(--green);color:#fff;border:1px solid var(--green)}
+  .btn.pri:hover{background:var(--green-dk);transform:translateY(-1px)}
+  .btn.ghost{color:var(--ink);border-bottom:2px solid var(--green);padding:11px 2px;border-radius:0}
+  .btn.ghost:hover{color:var(--green)}
+  .hero .cols{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,6fr);gap:56px;align-items:start}
+  @media(max-width:900px){.hero .cols{grid-template-columns:1fr}.hero h1{max-width:none}}
+
+  /* 终端证物卡 */
+  .term{border:1px solid #2A3B31;border-radius:6px;background:var(--dark);overflow:hidden;
+    box-shadow:8px 10px 0 rgba(23,69,43,.10)}
+  .term .bar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid #2A3B31}
+  .term .bar i{width:9px;height:9px;border-radius:50%;background:#3E5648}
+  .term .bar span{margin-left:6px;font-family:var(--mono);font-size:11px;color:var(--darksub)}
+  .term .body{padding:18px 20px;font-family:var(--mono);font-size:12.8px;line-height:2.1;color:var(--darktx)}
+  .term .u{color:#E9F1EB;margin:4px 0}.term .u::before{content:"❯ ";color:#8FC7A5;font-weight:700}
+  .term .s{color:var(--darksub)}.term .s b{color:#8FC7A5;font-weight:600}
+  .term .t{color:#A9C4B2}
+  .term .fin{margin-top:12px;padding:9px 13px;border-left:2px solid #8FC7A5;background:rgba(143,199,165,.09);color:#E9F1EB}
+
+  .figures{margin:56px 0 0;padding:20px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;gap:6px 28px}
+  .figures b{color:var(--green);font-weight:600}
+  .figures span::after{content:"·";margin-left:26px;color:var(--line)}
+  .figures span:last-child::after{content:""}
+
+  /* ── 章节骨架：左标签右内容，不对称 ── */
+  section{padding:78px 0}
+  section + section{border-top:1px solid var(--line)}
+  .sec{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:60px;align-items:start}
+  @media(max-width:880px){.sec{grid-template-columns:1fr;gap:28px}}
+  .rail{position:sticky;top:84px}
+  @media(max-width:880px){.rail{position:static}}
+  .rail .no{font-family:var(--mono);font-size:13px;color:var(--faint);letter-spacing:2px}
+  .rail h2{font-family:var(--serif);font-weight:900;font-size:clamp(26px,3.4vw,34px);margin-top:10px;letter-spacing:1px}
+  .rail .desc{margin-top:14px;color:var(--sub);font-size:14.5px;max-width:300px}
+
+  /* 能力行 */
+  .rows{display:flex;flex-direction:column}
+  .row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:20px;padding:26px 0;border-top:1px solid var(--line)}
+  .row:last-child{border-bottom:1px solid var(--line)}
+  .row .idx{font-family:var(--mono);font-size:24px;color:#C9C6B8;font-weight:400;line-height:1.2}
+  .row h3{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.5px}
+  .row .one{margin-top:4px;font-size:15px;color:var(--ink)}
+  .row .one::before{content:"「"}.row .one::after{content:"」"}
+  .row ul{margin-top:10px;list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px}
+  .row li{font-size:13.5px;color:var(--sub)}
+  .row li::before{content:"/ ";color:var(--green);font-family:var(--mono)}
+
+  /* 时间线 */
+  .tl{position:relative;padding-left:34px}
+  .tl::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:1px;background:var(--line)}
+  .tstep{position:relative;padding:0 0 38px}
+  .tstep:last-child{padding-bottom:0}
+  .tstep::before{content:"";position:absolute;left:-30px;top:9px;width:9px;height:9px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--green)}
+  .tstep .n{font-family:var(--mono);font-size:11.5px;letter-spacing:2px;color:var(--faint)}
+  .tstep h4{font-family:var(--serif);font-size:19px;margin:6px 0 8px}
+  .tstep p{font-size:14.5px;color:var(--sub);max-width:560px}
+  .gate{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--green);
+    border:1px solid var(--green);padding:5px 12px;border-radius:2px;background:rgba(33,115,70,.05)}
+  .gate::before{content:"门禁 · "}
+
+  /* 交付分支：不对称 7/5 */
+  .dlv{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:22px}
+  @media(max-width:880px){.dlv{grid-template-columns:1fr}}
+  .dcard{border:1px solid var(--line);border-radius:4px;padding:26px;background:#FFFDF8}
+  .dcard.main{grid-row:span 2;background:var(--paper2);border-color:var(--green);position:relative}
+  .dcard .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:1.5px;color:var(--faint)}
+  .dcard.main .lbl{color:var(--green)}
+  .dcard h3{font-family:var(--serif);font-size:20px;margin:10px 0 10px}
+  .dcard p{font-size:14px;color:var(--sub)}
+  .dcard p b{color:var(--ink)}
+  .dcard .verdict{margin-top:16px;font-family:var(--serif);font-size:15px;color:var(--green)}
+  .dcard .verdict::before{content:"—— "}
+  .side{display:flex;flex-direction:column;gap:22px}
+  .side .dcard{flex:1}
+
+  /* 对话实录 */
+  .dlg{display:flex;flex-direction:column}
+  .dq{padding:22px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:88px minmax(0,1fr);gap:18px}
+  .dq:last-child{border-bottom:1px solid var(--line)}
+  .dq .who{font-family:var(--mono);font-size:12px;letter-spacing:1px;color:var(--faint);padding-top:4px}
+  .dq .q{font-family:var(--serif);font-size:17.5px;line-height:1.6}
+  .dq .a{font-size:14.5px;color:var(--sub)}
+  .dq .a b{color:var(--ink)}
+  .dq .a code{font-family:var(--mono);font-size:12.5px;color:var(--green);background:var(--mark);padding:1px 6px;border-radius:2px}
+
+  /* 表格 */
+  .cmdtbl{width:100%;border-collapse:collapse;font-size:14px}
+  .cmdtbl th{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--faint);text-align:left;
+    padding:0 14px 10px;border-bottom:1px solid var(--ink);font-weight:400}
+  .cmdtbl td{padding:13px 14px;border-bottom:1px solid var(--line);color:var(--sub);vertical-align:top}
+  .cmdtbl tr:hover td{background:rgba(33,115,70,.04)}
+  .cmdtbl td:first-child{font-family:var(--mono);color:var(--green);font-weight:600;font-size:13.5px}
+  .cmdtbl code{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+
+  /* 代码块 */
+  .code{position:relative;margin-top:14px;background:var(--dark);border-radius:4px;overflow:hidden}
+  .code pre{padding:18px 20px;font-family:var(--mono);font-size:13px;line-height:1.95;color:var(--darktx);white-space:pre-wrap;word-break:break-all}
+  .code .cmt{color:var(--darksub)}.code .cmd{color:#8FC7A5}.code .str{color:#E0B97D}
+  .cp{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:11.5px;color:var(--darksub);
+    background:rgba(255,255,255,.06);border:1px solid #2A3B31;border-radius:2px;padding:4px 11px;cursor:pointer;transition:.18s}
+  .cp:hover{color:#8FC7A5;border-color:#8FC7A5}
+
+  /* 质量清单 */
+  .qc{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 40px;margin-top:8px}
+  .qgroup{padding:14px 0;border-bottom:1px solid var(--line)}
+  .qgroup h5{font-family:var(--mono);font-size:11.5px;letter-spacing:2px;color:var(--green);margin-bottom:8px;font-weight:500}
+  .qgroup .it{display:flex;gap:10px;font-size:13.5px;color:var(--sub);padding:4px 0}
+  .qgroup .it::before{content:"✓";color:var(--green);font-weight:700;flex:0 0 auto}
+
+  /* 进化 */
+  .evolution{margin-top:26px;border:1px solid var(--line);border-left:3px solid var(--green);background:#FFFDF8;
+    padding:20px 24px;font-size:14.5px;color:var(--sub);border-radius:0 4px 4px 0}
+  .evolution b{color:var(--ink)}
+  .evolution code{font-family:var(--mono);font-size:12.5px;color:var(--green)}
+
+  footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);font-size:13px}
+  footer .in{display:flex;flex-wrap:wrap;gap:14px 32px;align-items:baseline;justify-content:space-between}
+  footer a{border-bottom:1px solid var(--line);padding-bottom:1px;transition:.18s}
+  footer a:hover{color:var(--green);border-color:var(--green)}
+  footer .note{font-family:var(--mono);font-size:11.5px}
+
+  .rv{opacity:0;transform:translateY(22px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
+  .rv.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}
+    html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="topin">
+  <span class="wordmark">VBA<em>智能编程</em>助手</span>
+  <span class="tag">/ AGENT SKILL</span>
+  <nav>
+    <a href="#feat">能力</a><a href="#work">流程</a><a href="#dlv">交付</a>
+    <a href="#dlg">实录</a><a href="#cmd">命令</a><a href="#ins">安装</a>
+  </nav>
+</div></div>
+
+<!-- ══ Hero ══ -->
+<div class="hero wrap">
+  <div class="cols">
+    <div>
+      <div class="kicker">EXCEL VBA · 一站式开发</div>
+      <h1>需求一句话，<br>成品<span class="mk">一个簿</span>。</h1>
+      <p class="lead">你描述想要什么，它写代码、建工作簿、灌<b>测试数据</b>、注入宏、跑给你看。全程有 JSON 回执，不玩虚的。</p>
+      <div class="cta">
+        <a class="btn pri" href="#ins">让 Agent 装上它</a>
+        <a class="btn ghost" href="#feat">先看看能干嘛 ↓</a>
+      </div>
+    </div>
+    <div class="term rv">
+      <div class="bar"><i></i><i></i><i></i><span>vba_manager · 真实执行记录</span></div>
+      <div class="body">
+        <div class="u">帮我写个宏，把销量按地区汇总</div>
+        <div class="s">[判定] 没给文件 → <b>新建带测试数据的工作簿</b></div>
+        <div class="s"><span class="t">create</span>  demo.xlsm · 20行×6列 … <b>success=true</b></div>
+        <div class="s"><span class="t">write</span>   DataProcessor.bas … <b>success=true</b></div>
+        <div class="s"><span class="t">run</span>     SummarizeByRegion … <b>success=true</b></div>
+        <div class="fin">✓ 交付 demo.xlsm：有数据、有宏、有结果</div>
+      </div>
+    </div>
+  </div>
+  <div class="figures rv">
+    <span><b>8</b> 个命令</span><span><b>10</b> 条准则</span>
+    <span><b>19</b> 道门禁</span><span><b>4</b> 步闭环</span>
+    <span><b>0</b> 次口头确认</span>
+  </div>
+</div>
+
+<!-- ══ §01 能力 ══ -->
+<section id="feat"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 01</div>
+    <h2>它能干嘛</h2>
+    <p class="desc">六件事，覆盖 Excel 自动化的主战场。深知识库在 references/ 里，用到才翻。</p>
+  </div>
+  <div class="rows">
+    <div class="row rv"><div class="idx">01</div><div>
+      <h3>批量数据处理</h3><div class="one">万行数据，秒级跑完。</div>
+      <ul><li>筛选 / 排序 / 去重 / 汇总</li><li>Dictionary 分组统计</li><li>空表、单行不翻车</li></ul>
+    </div></div>
+    <div class="row rv"><div class="idx">02</div><div>
+      <h3>报表格式化</h3><div class="one">一键排版，直接交人。</div>
+      <ul><li>标题 / 边框 / 配色 / 列宽</li><li>条件格式</li><li>公式批量写完转值</li></ul>
+    </div></div>
+    <div class="row rv"><div class="idx">03</div><div>
+      <h3>图表与透视表</h3><div class="one">报表不够，图表来凑。</div>
+      <ul><li>代码建图 + 格式化</li><li>透视表字段与聚合</li><li>工作表事件</li></ul>
+    </div></div>
+    <div class="row rv"><div class="idx">04</div><div>
+      <h3>模块全生命周期</h3><div class="one">八个命令，管到底。</div>
+      <ul><li>list / read / write / delete</li><li>run 支持传参</li><li>export / import 备份迁移</li></ul>
+    </div></div>
+    <div class="row rv"><div class="idx">05</div><div>
+      <h3>性能优化</h3><div class="one">慢宏换骨，实测对比。</div>
+      <ul><li>数组替代单元格循环</li><li>Find 替代整列扫描</li><li>分块处理大数据</li></ul>
+    </div></div>
+    <div class="row rv"><div class="idx">06</div><div>
+      <h3>调试排障</h3><div class="one">报错三件套：位置、原因、修复。</div>
+      <ul><li>Debug.Print 结构化跟踪</li><li>Debug.Assert 边界校验</li><li>改完注入，实测验证</li></ul>
+    </div></div>
+  </div>
+</div></section>
+
+<!-- ══ §02 流程 ══ -->
+<section id="work"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 02</div>
+    <h2>怎么工作</h2>
+    <p class="desc">四步闭环。每步有门禁，门禁不过，下一步免谈。证据是命令回执，不是嘴上保证。</p>
+  </div>
+  <div class="tl">
+    <div class="tstep rv"><div class="n">STEP 01</div><h4>需求分析</h4>
+      <p>先判定交付分支：建新簿、用你的簿、还是只要代码。需求含糊就先问，不瞎猜。</p>
+      <span class="gate">目标文件明确，或声明新建</span></div>
+    <div class="tstep rv"><div class="n">STEP 02</div><h4>代码生成</h4>
+      <p>按 10 条现代准则写 VBA，存成 .bas 再读回核验，过 19 道质量门禁。</p>
+      <span class="gate">质量清单全过 + 读回证据</span></div>
+    <div class="tstep rv"><div class="n">STEP 03</div><h4>建簿与注入</h4>
+      <p>没给文件就新建带测试数据的 .xlsm；给了文件就先备份同名模块再注入。</p>
+      <span class="gate">write 与 list 双回执 success=true</span></div>
+    <div class="tstep rv"><div class="n">STEP 04</div><h4>运行与交付</h4>
+      <p>run 宏、核对输出，不对就改，最多换三种方法。最后给你交付报告。</p>
+      <span class="gate">输出符合预期 + 命令证据</span></div>
+  </div>
+</div></section>
+
+<!-- ══ §03 交付 ══ -->
+<section id="dlv"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 03</div>
+    <h2>三种交付</h2>
+    <p class="desc">默认路径写死在技能里：没给文件，就交付能打开就用的成品。</p>
+  </div>
+  <div class="dlv">
+    <div class="dcard main rv">
+      <div class="lbl">默认 · 未指定文件</div>
+      <h3>新建带测试数据的工作簿</h3>
+      <p>新建 .xlsm，写入表头和 <b>20 行业务数据</b>——编号、名称、类别、数量、单价、金额（金额=数量×单价）。然后注入宏、实跑验证。</p>
+      <div class="verdict">打开就是成品：有数据、有代码、有结果。</div>
+    </div>
+    <div class="side">
+      <div class="dcard rv">
+        <div class="lbl">指定文件</div>
+        <h3>在既有工作簿上增强</h3>
+        <p>先 <b>export 备份</b>同名模块，再注入新代码。你的既有数据和宏，一个字节都不乱动。</p>
+        <div class="verdict">先备份，再动手。</div>
+      </div>
+      <div class="dcard rv">
+        <div class="lbl">明确只要代码</div>
+        <h3>仅生成代码文本</h3>
+        <p>交付 .bas 文件和 Alt+F11 粘贴步骤，不注入、不运行。代码照样过 19 道门禁。</p>
+        <div class="verdict">尊重选择，质量不打折。</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ══ §04 实录 ══ -->
+<section id="dlg"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 04</div>
+    <h2>对话实录</h2>
+    <p class="desc">最常见四类问法，以及真实发生的事。</p>
+  </div>
+  <div class="dlg">
+    <div class="dq rv"><div class="who">你说</div><div class="q">「帮我写个宏，把某列数据去重统计。」<span style="color:var(--faint);font-size:13px">（没提文件）</span></div></div>
+    <div class="dq rv"><div class="who">助手</div><div class="a">新建带测试数据的 .xlsm → 注入去重宏 → <code>run</code> 实跑核对 → 给你路径和执行摘要。<b>全程没让你动手。</b></div></div>
+    <div class="dq rv"><div class="who">你说</div><div class="q">「往我的 data.xlsm 里加个汇总功能。」</div></div>
+    <div class="dq rv"><div class="who">助手</div><div class="a">先 <code>export</code> 备份同名模块 → 注入 → <code>list</code> 确认 → 运行验证。<b>你的既有数据不动。</b></div></div>
+    <div class="dq rv"><div class="who">你说</div><div class="q">「这宏跑得太慢了。」</div></div>
+    <div class="dq rv"><div class="who">助手</div><div class="a">定位循环瓶颈 → 数组批量 + Find 重写 → 注入实测，<b>前后耗时摆给你看</b>。</div></div>
+    <div class="dq rv"><div class="who">你说</div><div class="q">「只要代码，我自己粘贴。」</div></div>
+    <div class="dq rv"><div class="who">助手</div><div class="a">给 .bas 文件和 Alt+F11 步骤。<b>不越界，不替你做主。</b></div></div>
+  </div>
+</div></section>
+
+<!-- ══ §05 命令 ══ -->
+<section id="cmd"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 05</div>
+    <h2>命令一览</h2>
+    <p class="desc">全部返回 JSON，success 字段说了算。文档在 docs/API.md。</p>
+  </div>
+  <table class="cmdtbl rv">
+    <tr><th>命令</th><th>用法</th><th>说明</th></tr>
+    <tr><td>create</td><td><code>create "新文件.xlsm" [工作表] [行数] [列数]</code></td><td>新建 .xlsm 并写入测试数据，默认 20 行 6 列；已存在拒绝覆盖</td></tr>
+    <tr><td>list</td><td><code>list "文件.xlsm"</code></td><td>列出模块：名称、类型、行数</td></tr>
+    <tr><td>read</td><td><code>read "文件.xlsm" "模块名"</code></td><td>读模块源码</td></tr>
+    <tr><td>write</td><td><code>write "文件.xlsm" "模块名" "代码.bas"</code></td><td>写入或覆盖模块，自动保存</td></tr>
+    <tr><td>delete</td><td><code>delete "文件.xlsm" "模块名"</code></td><td>删模块</td></tr>
+    <tr><td>run</td><td><code>run "文件.xlsm" "宏名" [参数...]</code></td><td>运行宏，带回执</td></tr>
+    <tr><td>export</td><td><code>export "文件.xlsm" "模块名" "备份.bas"</code></td><td>导出备份</td></tr>
+    <tr><td>import</td><td><code>import "文件.xlsm" "模块.bas" [新名称]</code></td><td>导入模块</td></tr>
+  </table>
+</div></section>
+
+<!-- ══ §06 安装 ══ -->
+<section id="ins"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 06</div>
+    <h2>两分钟装好</h2>
+    <p class="desc">Claude Code、Codex 都行。装完重启会话，技能列表见中文名。</p>
+  </div>
+  <div>
+    <p style="font-family:var(--serif);font-size:17px">方式一 · 把这段话发给你的 Agent（推荐）</p>
+    <div class="code">
+      <button class="cp" data-copy="请帮我安装技能「VBA智能编程助手」：
+1. 克隆 https://github.com/okazaki112/vba-vibcoding-skill.git 到临时目录，把其中的 VBA智能编程助手 文件夹复制到你的技能目录下（Claude Code 为 ~/.claude/skills/，Codex 为 ~/.codex/skills/，以你实际约定为准），确保 SKILL.md 位于 技能目录/VBA智能编程助手/SKILL.md
+2. 安装完成后报告：安装路径、SKILL.md 是否就位，以及前置要求（pip install pywin32；Excel 信任中心勾选「信任对 VBA 工程对象模型的访问」）">复制</button>
+<pre>请帮我安装技能「VBA智能编程助手」：
+1. 克隆 https://github.com/okazaki112/vba-vibcoding-skill.git 到临时目录，
+   把其中的 VBA智能编程助手 文件夹复制到你的技能目录下
+   （Claude Code 为 ~/.claude/skills/，Codex 为 ~/.codex/skills/，以你实际约定为准），
+   确保 SKILL.md 位于 技能目录/VBA智能编程助手/SKILL.md
+2. 装完报告：安装路径、SKILL.md 是否就位，
+   以及前置要求（pip install pywin32；Excel 信任中心勾选
+   「信任对 VBA 工程对象模型的访问」）</pre>
+    </div>
+    <p style="font-family:var(--serif);font-size:17px;margin-top:34px">方式二 · 自己动手</p>
+    <div class="code">
+      <button class="cp" data-copy="git clone https://github.com/okazaki112/vba-vibcoding-skill.git">复制</button>
+<pre><span class="cmd">git clone</span> https://github.com/okazaki112/vba-vibcoding-skill.git
+<span class="cmt"># 把其中的 VBA智能编程助手 文件夹，复制进技能目录即可</span></pre>
+    </div>
+    <div class="qc" style="margin-top:30px">
+      <div class="qgroup"><h5>前置条件</h5>
+        <div class="it">Windows + Microsoft Excel</div>
+        <div class="it">Python 3，pip install pywin32</div>
+        <div class="it">信任中心勾选「信任对 VBA 工程对象模型的访问」</div>
+        <div class="it">目标文件必须是 .xlsm</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ══ §07 质量 ══ -->
+<section id="quality"><div class="wrap sec">
+  <div class="rail rv">
+    <div class="no">§ 07</div>
+    <h2>质量不靠运气</h2>
+    <p class="desc">19 道门禁逐项过，机检一条命令，验收用例可走查。</p>
+  </div>
+  <div>
+    <div class="qc rv">
+      <div class="qgroup"><h5>基础规范 × 6</h5>
+        <div class="it">Option Explicit 强制声明</div>
+        <div class="it">匈牙利缩写命名</div>
+        <div class="it">无 Select / Activate</div>
+        <div class="it">参数传对象，不靠 ActiveSheet</div>
+        <div class="it">On Error + CleanUp 全套</div>
+        <div class="it">性能三开关</div>
+      </div>
+      <div class="qgroup"><h5>结构 × 4</h5>
+        <div class="it">四空格缩进一致</div>
+        <div class="it">过程有注释</div>
+        <div class="it">For Each 优先</div>
+        <div class="it">With 减少对象引用</div>
+      </div>
+      <div class="qgroup"><h5>性能 × 3</h5>
+        <div class="it">大数据走数组</div>
+        <div class="it">不变量挪到循环外</div>
+        <div class="it">Find 替代整列扫描</div>
+      </div>
+      <div class="qgroup"><h5>安全 × 3</h5>
+        <div class="it">危险操作先确认</div>
+        <div class="it">动手前先备份</div>
+        <div class="it">敏感操作有恢复</div>
+      </div>
+      <div class="qgroup"><h5>可维护 × 3</h5>
+        <div class="it">单一职责模块化</div>
+        <div class="it">关键逻辑留痕</div>
+        <div class="it">空数据 / 单行有处理</div>
+      </div>
+    </div>
+    <p style="font-family:var(--serif);font-size:17px;margin-top:36px">结构机检，一条命令</p>
+    <div class="code">
+      <button class="cp" data-copy="check.cmd">复制</button>
+<pre><span class="cmd">check.cmd</span>    <span class="cmt"># Linux / macOS 用 ./check.sh</span>
+<span class="cmt"># 查：SKILL.md 结构与工作流 · 提示词库五文件 · 3 条验收用例 · 台账格式</span></pre>
+    </div>
+    <div class="evolution rv"><b>它会自我进化：</b>实战里发现缺陷或新场景，记进 <code>evolution.md</code> 台账，机检盯着未决条目提醒，批准后落版重验。<b>越用越贴合你的活儿。</b></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap in">
+  <span>一个把 VBA 开发当成品交付的 Agent Skill</span>
+  <a href="https://github.com/okazaki112/vba-vibcoding-skill" target="_blank" rel="noopener">github.com/okazaki112/vba-vibcoding-skill</a>
+  <span class="note">docs/index.html · 单文件 · 无外部依赖</span>
+</div></footer>
+
+<script>
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px 220px 0px' });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+  // 兜底：3 秒后全部显现，内容可见性优先于入场动画
+  setTimeout(() => document.querySelectorAll('.rv:not(.in)').forEach(el => el.classList.add('in')), 3000);
+
+  document.querySelectorAll('.cp').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(btn.dataset.copy); }
+      catch { const t = document.createElement('textarea'); t.value = btn.dataset.copy;
+              document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+      const o = btn.textContent; btn.textContent = '已复制';
+      setTimeout(() => btn.textContent = o, 1500);
+    });
+  });
+</script>
+</body>
+</html>
